@@ -114,7 +114,7 @@ def fb_create_event(params,
 
     return response.json()
 
-def upload_facebook_data(dateFrom, dateTo, event_id, redash_key, fb_access_token, step=200):
+def upload_facebook_data(dateFrom, dateTo, query_id, event_id, redash_key, fb_access_token, step=200):
 
     data = proccess(dateFrom, dateTo, redash_key)
     
