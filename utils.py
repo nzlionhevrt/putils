@@ -55,7 +55,7 @@ def to_table(json_array):
     return pd.DataFrame(data)
 
 
-def proccess(params, query_id, redash_url=REDASH_URL):
+def proccess(params, query_id, redash_url=REDASH_URL, api_key):
 
     output = get_fresh_query_result(redash_url, query_id, api_key, params)
     if not output:
