@@ -55,7 +55,7 @@ def to_table(json_array):
     return pd.DataFrame(data)
 
 
-def proccess(params, query_id, redash_url=REDASH_URL, api_key):
+def proccess(params, query_id, api_key, redash_url=REDASH_URL):
 
     output = get_fresh_query_result(redash_url, query_id, api_key, params)
     if not output:
@@ -116,7 +116,7 @@ def fb_create_event(params,
 
 def upload_facebook_data(dateFrom, dateTo, event_id, redash_key, fb_access_token, step=200):
 
-    data = proccess(dateFrom, dateTo)
+    data = proccess(dateFrom, dateTo, redash_key)
     
     for i in range(len(data)):
         phone = data[i]['phone'] 
