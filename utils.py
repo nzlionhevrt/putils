@@ -5,6 +5,8 @@ import pandas as pd
 from datetime import datetime
 
 
+REDASH_URL = 'https://redash.base.pedant.ru'
+
 def poll_job(s, redash_url, job):
     while job['status'] not in (3,4):
         response = s.get('{}/api/jobs/{}'.format(redash_url, job['id']))
@@ -53,20 +55,19 @@ def to_table(json_array):
     return pd.DataFrame(data)
 
 
-def proccess(params, query_id):
+def proccess(params, query_id, redash_url=REDASH_URL):
 
-    output = get_fresh_query_result('https://redash.base.pedant.ru', query_id, api_key, params)
+    output = get_fresh_query_result(redash_url, query_id, api_key, params)
     if not output:
         return None
         
-    data = to_table(output)
     return data
     
 
 def fb_upload_data(event_id, 
-		   params, 
-		   json, 
-		   api_ver='v9.0'):
+                   params, 
+                   json, 
+                   api_ver='v9.0'):
 
     s = requests.Session()
     
@@ -81,26 +82,26 @@ def fb_upload_data(event_id,
 
 
 def fb_upload_data(event_id, 
-		   params, 
-		   json, 
-		   api_ver='v9.0'):
+                   params, 
+                   json, 
+                   api_ver='v9.0'):
 
     s = requests.Session()
     
     url = f'https://graph.facebook.com/{api_ver}/{event_id}/events'
-    response = s.post(url, params=params, json=json)
+    response = s.post(url, params=params)
 
     if response.status_code != 200:
         print(response.text)
         raise Exception('Refresh failed.')
 
-    return response.json()
+    return response.json(), response.status_code
 
 
 
 def fb_create_event(params, 
-		    json, 
-		    api_ver='v9.0'):
+            json, 
+            api_ver='v9.0'):
 
     s = requests.Session()
     
@@ -113,4 +114,28 @@ def fb_create_event(params,
 
     return response.json()
 
+def upload_facebook_data(dateFrom, dateTo, event_id, redash_key, fb_access_token, step=200):
+
+    data = proccess(dateFrom, dateTo)
+    
+    for i in range(len(data)):
+        phone = data[i]['phone'] 
+        phone = hashlib.sha256(phone.encode('utf-8')).hexdigest()
+        data[i]['match_keys'] = {'phone' : [phone]}
+        data[i]['event_time'] = int(data[i]['event_time'])
+        data[i]['value'] = 0
+        data[i]['currency'] = 'USD'
+
+        del data[i]['phone']
+        
+    for i in range(0, 200, step):
+
+        params = {
+            'access_token' : fb_access_token,
+            'upload_tag' : 'stored_data',
+            'data' : json.dumps(data[i:i+step])
+            }
+    
+        fb_upload_data(event_id, params=params, json=None)
+    break
 
