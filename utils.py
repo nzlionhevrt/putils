@@ -137,5 +137,4 @@ def upload_facebook_data(dateFrom, dateTo, event_id, redash_key, fb_access_token
             }
     
         fb_upload_data(event_id, params=params, json=None)
-    break
 
