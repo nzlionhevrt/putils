@@ -1,12 +1,19 @@
 import os
-import requests
 import time
-import hashlib
 import json
+import hashlib
+import requests
 from datetime import datetime
-
+import psycopg2
 
 REDASH_URL = 'https://redash.base.pedant.ru'
+
+class uploader:
+    """Main class"""
+
+    def __init__():
+        
+
 
 def poll_job(s, redash_url, job):
     while job['status'] not in (3,4):
@@ -16,7 +23,7 @@ def poll_job(s, redash_url, job):
 
     if job['status'] == 3:
         return job['query_result_id']
-    
+
     return None
 
 
@@ -43,7 +50,7 @@ def get_fresh_query_result(redash_url, query_id, api_key, params):
 
 
 def to_table(json_array):
-    
+
     data = {}
 
     for row in json_array:
@@ -62,15 +69,15 @@ def proccess(params, query_id, api_key, redash_url=REDASH_URL):
     if not output:
         return None
     return output
-    
 
-def fb_upload_data(event_id, 
-                   params, 
-                   json, 
+
+def fb_upload_data(event_id,
+                   params,
+                   json,
                    api_ver='v9.0'):
 
     s = requests.Session()
-    
+
     url = f'https://graph.facebook.com/{api_ver}/{event_id}/events'
     response = s.post(url, params=params)
 
@@ -81,13 +88,13 @@ def fb_upload_data(event_id,
     return response.json()
 
 
-def fb_upload_data(event_id, 
-                   params, 
-                   json, 
+def fb_upload_data(event_id,
+                   params,
+                   json,
                    api_ver='v9.0'):
 
     s = requests.Session()
-    
+
     url = f'https://graph.facebook.com/{api_ver}/{event_id}/events'
     response = s.post(url, params=params)
 
@@ -99,12 +106,12 @@ def fb_upload_data(event_id,
 
 
 
-def fb_create_event(params, 
-            json, 
+def fb_create_event(params,
+            json,
             api_ver='v9.0'):
 
     s = requests.Session()
-    
+
     url = f'https://graph.facebook.com/{api_ver}/{manager_id}/offline_conversion_data_sets'
     response = s.post(url, params=params)
 
@@ -121,9 +128,9 @@ def upload_facebook_data(dateFrom, dateTo, query_id, event_id, redash_key, fb_ac
              }
 
     data = proccess(params, query_id, redash_key)
-    
+
     for i in range(len(data)):
-        phone = data[i]['phone'] 
+        phone = data[i]['phone']
         phone = hashlib.sha256(phone.encode('utf-8')).hexdigest()
         data[i]['match_keys'] = {'phone' : [phone]}
         data[i]['event_time'] = int(data[i]['event_time'])
@@ -131,7 +138,7 @@ def upload_facebook_data(dateFrom, dateTo, query_id, event_id, redash_key, fb_ac
         data[i]['currency'] = 'USD'
 
         del data[i]['phone']
-        
+
     for i in range(0, 200, step):
 
         params = {
@@ -139,9 +146,7 @@ def upload_facebook_data(dateFrom, dateTo, query_id, event_id, redash_key, fb_ac
             'upload_tag' : 'stored_data',
             'data' : json.dumps(data[i:i+step])
             }
-    
+
         fb_upload_data(event_id, params=params, json=None)
-    
+
     print("Success")
-
-
