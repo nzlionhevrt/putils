@@ -1,4 +1,5 @@
-from dateTime import datetime, timedelta
+# from datetime import datetime
+import datetime as d
 
 DATE_FRMT = '%Y-%m-%d'
 
@@ -6,27 +7,25 @@ def query_leads_from_calls(days=1, date_format=DATE_FRMT):
     """
     Query to select unique leads from calls.
     """
-    dateFrom = (datetime.today()-timedelta(days)).strftime(date_format)
-    dateTo = datetime.today().strftime(date_format)
+    dateFrom = (d.datetime.today()-d.timedelta(days)).strftime(date_format)
+    dateTo = d.datetime.today().strftime(date_format)
 
-    return """SELECT EXTRACT(EPOCH FROM min("StartTime")) as date,
-           "CallingPhoneNumber" as phone
-    FROM "Calls" AS Calls
-    LEFT JOIN "Models" AS Models ON (Calls."ModelId" = Models."Id")
-    LEFT JOIN "Cities" AS Cities ON (Cities."Id" = Calls."CityId")
-    WHERE "StartTime" + interval '3 Hour' >= '{0}'
-      AND "CallSource" != 'sip'
-      AND "StartTime" + interval '3 Hour' < '{1}'
-      AND "AnalyticType" != 3
-    GROUP BY "CallingPhoneNumber";""".format(dateFrom, dateTo)
+    return """SELECT EXTRACT(EPOCH FROM min(\"StartTime\")) as date,
+           \"CallingPhoneNumber\" as phone
+    FROM \"Calls\" AS Calls
+    WHERE \"StartTime\" + interval '3 Hour' >= '{0}'
+      AND \"CallSource\" != 'sip'
+      AND \"StartTime\" + interval '3 Hour' < '{1}'
+      AND \"AnalyticType\" != 3
+    GROUP BY \"CallingPhoneNumber\";""".format(dateFrom, dateTo)
 
 
 def query_customers(days=1, date_format=DATE_FRMT):
     """
     Query to select customers from orders.
     """
-    dateFrom = (datetime.today()-timedelta(days)).strftime(date_format)
-    dateTo = datetime.today().strftime(date_format)
+    dateFrom = (d.datetime.today()-d.timedelta(days)).strftime(date_format)
+    dateTo = d.datetime.today().strftime(daSte_format)
 
     return """SELECT min(Orders."Created") AS date,
        Customers."Phone",
@@ -51,7 +50,7 @@ WHERE sp."DateTime" >= '2020-05-01'
            AND orders."Date" < '{1}'))
 GROUP BY Customers."Phone",
          Orders."ModelId",
-         ServiceCenters."CityId"""".format(dateFrom, dateTo)
+         ServiceCenters."CityId\"""".format(dateFrom, dateTo)
 
 def test_query():
     return """
