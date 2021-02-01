@@ -4,6 +4,7 @@ import time
 import configparser
 import requests
 import schedule
+from utils import *
 
 
 class MetaSingleton(type):
@@ -20,8 +21,11 @@ class FacebookUploader(metaclass=MetaSingleton):
                  fb_token: str, fb_client_id: str,
                  fb_client_secret: str, fb_lead_event: str,
                  fb_customers_event: str,
-                 leads_url: str,
-                 orders_url: str,
+                 # leads_url: str,
+                 # orders_url: str,
+                 redash_api_key: str,
+                 redash_leads_query_id: int,
+                 redash_orders_query_id: int,
                  fb_api_ver = 'v9.0'
                  ) -> None:
 
@@ -37,8 +41,12 @@ class FacebookUploader(metaclass=MetaSingleton):
         self.fb_api_ver = fb_api_ver
         self.fb_lead_event = fb_lead_event
         self.fb_customers_event = fb_customers_event
-        self.leads_url = leads_url
-        self.orders_url = orders_url
+        # self.leads_url = leads_url
+        # self.orders_url = orders_url
+        self.redash_api_key = redash_api_key
+        self.redash_leads_query_id = redash_leads_query_id
+        self.redash_orders_query_id = redash_orders_query_id
+
         self.update_facebook_access_token()
 
 
@@ -63,13 +71,13 @@ class FacebookUploader(metaclass=MetaSingleton):
                        "/oauth/access_token?grant_type=fb_exchange_token&client_id=",
                        self.fb_client_id,
                        "&client_secret=",
-                       self.client_secret,
+                       self.fb_client_secret,
                        "&fb_exchange_token=",
                        self.fb_token))
 
         respond = requests.get(url)
 
-        if response.status_code != 200:
+        if respond.status_code != 200:
             raise Exception("Failed update Facebook access token "+response.text)
 
         self.fb_token = respond.json()['access_token']
@@ -80,67 +88,18 @@ class FacebookUploader(metaclass=MetaSingleton):
         Query leads.
         """
 
-        data = self.get_data(self.leads_url)
-
-        upload_json = []
-
-        for row in data:
-            upload_json.append({
-                "event_time" : int(row['time']),
-                "match_keys" : {
-                    "phone" : [hashlib.sha256(row['phone'].encode('utf-8')).hexdigest()]
-                    },
-                "event_name" : "Lead"
-            })
-
-        del data
-
-
-        # upload data via Facebook api
-        for i in range(0, 200, step):
-
-            params = {
-                'access_token' : self.fb_token,
-                'upload_tag' : 'stored_data',
-                'data' : json.dumps(upload_json[i:i+step])
-                }
-
-            self.fb_upload_data(event_id, params=params, json=None)
-
-        del upload_json
+        upload_facebook_data(self.redash_leads_query_id,
+                             self.fb_customers_event,
+                             self.redash_api_key,
+                             self.fb_token)
 
 
     def upload_customers(self):
 
-        data = self.get_data(self.orders_url)
-
-        upload_json = []
-
-        for row in data:
-            upload_json.append({
-                "event_time" : int(row['time']),
-                "match_keys" : {
-                    "phone" : [hashlib.sha256(row['phone'].encode('utf-8')).hexdigest()]
-                    },
-                "event_name" : "Lead",
-                "value" : int(row['price']),
-                "currency" : 'USD'
-            })
-
-        del data
-
-        #upload data via facebook api
-        for i in range(0, 200, step):
-
-            params = {
-                'access_token' : self.fb_token,
-                'upload_tag' : 'stored_data',
-                'data' : json.dumps(upload_json[i:i+step])
-                }
-
-            self.fb_upload_data(event_id, params=params, json=None)
-
-        del upload_json
+        upload_facebook_data(self.redash_orders_query_id,
+                             self.fb_customers_event,
+                             self.redash_api_key,
+                             self.fb_token)
 
 
     def fb_upload_data(self,
@@ -167,14 +126,14 @@ class FacebookUploader(metaclass=MetaSingleton):
         """
         schedule.every().day.at(t).do(self.update_facebook_access_token)
         schedule.every().day.at(t).do(self.upload_leads)
-        # schedule.every().day.at(t).do(self.upload_customers)
+        schedule.every().day.at(t).do(self.upload_customers)
 
         while True:
 
             schedule.run_pending()
             time.sleep(1)
 
-    def main(t):
+    def main(self, t):
         self.update_facebook_access_token()
         self.shedule_tasks(t)
 
@@ -185,15 +144,14 @@ if __name__ == '__main__':
     config.sections()
     config.read('./uploader.cfg')
 
-    if 'dbpassword' not in config['Database']:
-        password = None
-    else:
-        password = config['Database']['dbpassword']
 
     uploaderObject = FacebookUploader(fb_token=config['Facebook']['fb_token'],
                                       fb_client_id=config['Facebook']['fb_client_id'],
                                       fb_client_secret=config['Facebook']['fb_client_secret'],
                                       fb_lead_event=config['Facebook']['fb_lead_event'],
                                       fb_customers_event=config['Facebook']['fb_customers_event'],
-                                      fb_api_ver = 'v9.0')
-    uploaderObject.main()
+                                      fb_api_ver = 'v9.0',
+                                      redash_api_key=config['Redash']['api_key'],
+                                      redash_orders_query_id=config['Redash']['orders_query_id'],
+                                      redash_leads_query_id=config['Redash']['clients_query_id'])
+    uploaderObject.main(config['Uploader']['time'])

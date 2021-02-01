@@ -4,15 +4,11 @@ import json
 import hashlib
 import requests
 from datetime import datetime
+import datetime as d
 import psycopg2
 
+
 REDASH_URL = 'https://redash.base.pedant.ru'
-
-class uploader:
-    """Main class"""
-
-    def __init__():
-        
 
 
 def poll_job(s, redash_url, job):
@@ -121,10 +117,12 @@ def fb_create_event(params,
 
     return response.json()
 
-def upload_facebook_data(dateFrom, dateTo, query_id, event_id, redash_key, fb_access_token, step=200):
+def upload_facebook_data(query_id, event_id, redash_key,
+                         fb_access_token, step=200, days=1):
 
-    params = {'p_dateFrom': dateFrom,
-              'p_dateTo': dateTo
+    date_format = '%Y-%m-%d'
+    params = {'p_dateFrom': (d.datetime.today()-d.timedelta(days)).strftime(date_format),
+              'p_dateTo': d.datetime.today().strftime(date_format)
              }
 
     data = proccess(params, query_id, redash_key)
@@ -149,4 +147,37 @@ def upload_facebook_data(dateFrom, dateTo, query_id, event_id, redash_key, fb_ac
 
         fb_upload_data(event_id, params=params, json=None)
 
+    del data
     print("Success")
+
+
+def upload_clients_facebook_data(query_id, event_id, redash_key,
+                         fb_access_token, step=200, days=1):
+
+    date_format = '%Y-%m-%d'
+    params = {'p_dateFrom': (d.datetime.today()-d.timedelta(days)).strftime(date_format),
+              'p_dateTo': d.datetime.today().strftime(date_format)
+             }
+
+    data = proccess(params, query_id, redash_key)
+
+    for i in range(len(data)):
+        phone = data[i]['phone']
+        phone = hashlib.sha256(phone.encode('utf-8')).hexdigest()
+        data[i]['match_keys'] = {'phone' : [phone]}
+        data[i]['event_time'] = int(data[i]['event_time'])
+
+        del data[i]['phone']
+
+    for i in range(0, 200, step):
+
+        params = {
+            'access_token' : fb_access_token,
+            'upload_tag' : 'stored_data',
+            'data' : json.dumps(data[i:i+step])
+            }
+
+        fb_upload_data(event_id, params=params, json=None)
+
+    del data
+    print("Success x2")
